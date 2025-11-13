@@ -1,0 +1,80 @@
+## 1、<span style="color:brown">GPIO概述：</span>
+
+**1.1、GPIO定义：**
+
+`MCU`的**部分引脚**，被称为`GPIO`，全称`General-purpose input / output`，即：**通用输入输出**。
+
+`GPIO`的核心功能是<u>通过**软件配置**实现**引脚的输入/输出控制**</u>。
+
+**1.2、GPIO端口复用：**
+
+`Port`不仅可以做为**通用IO**，还可以**复用成为外设引脚**，比如：`PA9,PA10`可以复用为**UART1引脚**。
+
+<img src="https://raw.githubusercontent.com/root-bine/image/main/Typora-image/STM32_GPIO01.png" alt="image-20251113194547543" style="zoom:67%;" />
+
+**1.3、GPIO端口重映射：**
+
+**同一外设**可映射到**不同引脚**，比如：`UART1`默认引脚是`PA9,PA10`可以重映射到`PB6,PB7`。
+
+<img src="https://raw.githubusercontent.com/root-bine/image/main/Typora-image/STM32_GPIO02.png" alt="image-20251113195356612" style="zoom:67%;" />
+
+
+
+## 2、<span style="color:brown">GPIO硬件结构：</span>
+
+**2.1、端口与引脚：**
+
+`STM32`的`GPIO`分为<u>多个**端口（Port）**</u> ，每个端口包含<u>16个**引脚（Pin）**</u>，命名规则：<span style="color:red">端口字母+引脚编号</span>。
+
+**2.2、内部电路结构：**
+
+<img src="https://raw.githubusercontent.com/root-bine/image/main/Typora-image/STM32_GPIO03.png" alt="image-20251113200516720" style="zoom: 50%;" />
+
+<u>保护二极管</u>：
+
+> **FT标识**代表可以**容忍5V电压**，不同的引脚对电压的容忍值不同，需要在**DataSheet查找** 
+
+ 为了<span style="color:red">防止芯片被外部**过高 \ 过低的输入电压**烧坏</span>，`STM32`内置**保护二极管**：
+
+| 引脚电压 > `VDD_FT`，上方的二极管导通 | 引脚电压 < `VSS`，下方的二极管导通 |
+| :-----------------------------------: | :--------------------------------: |
+
+<img src="https://raw.githubusercontent.com/root-bine/image/main/Typora-image/STM32_GPIO04.png" alt="image-20251113182404462" style="zoom:55%;" />
+
+<u>上下拉电阻</u>：
+
+在<span style="color:red">无外部信号输入</span>时，控制引脚**默认状态的电压**：
+
+| 开启上拉电阻，引脚默认电压为`HIGH_LEVEL` | 开启下拉电阻，引脚默认电压为`LOW_LEVEL` |
+| :--------------------------------------: | :-------------------------------------: |
+
+
+
+## 3、<span style="color:brown">GPIO驱动机制：</span>
+
+**3.1、GPIO寄存器：**
+
+`STM32`通过**寄存器**控制**GPIO的工作模式**，每个端口有一组专用寄存器，核心寄存器包括：
+
+| 寄存器名称      | 功能描述                       | 关键位含义                                 |
+| --------------- | ------------------------------ | ------------------------------------------ |
+| `GPIOx_MODER`   | **模式**寄存器（2位/引脚）     | 00=输入，01=通用输出，10=复用功能，11=模拟 |
+| `GPIOx_OTYPER`  | **输出类型**寄存器（1位/引脚） | 0=推挽，1=开漏                             |
+| `GPIOx_OSPEEDR` | **输出速度**寄存器（2位/引脚） | 00=低速，01=中速，10=高速，11=超高速       |
+| `GPIOx_PUPDR`   | **上下拉**寄存器（2位/引脚）   | 00=浮空，01=上拉，10=下拉，11=保留         |
+| `GPIOx_IDR`     | **输入数据**寄存器（1位/引脚） | 读取引脚当前电平（0=低，1=高）             |
+| `GPIOx_ODR`     | **输出数据**寄存器（1位/引脚） | 写入控制引脚输出（0=低，1=高）             |
+
+**3.2、输出速率：**
+
+> `1 MHz = 1000 KHz = 1000000 Hz` 
+
+`GPIO`的**输出速度**用于控制**输出驱动器的开关速度**，<u>通过`GPIOx_OSPEEDR`配置</u>，分为4个等级：
+
+| 速度等级    | 最高频率  | 适用场景                          | 功耗特点                                                |
+| ----------- | --------- | --------------------------------- | ------------------------------------------------------- |
+| `Low`       | `2 MHz`   | LED指示灯                         | 低                                                      |
+| `Medium`    | `10 MHz`  | 普通数字输出（如按键反馈信号）    | 中                                                      |
+| `High`      | `50 MHz`  | 高速外设（如SPI、UART）           | 高                                                      |
+| `Very High` | `10 MHz+` | 高性能外设（如HDMI、高速ADC触发） | 极高（<span style="color:red">仅高性能型号支持</span>） |
+
